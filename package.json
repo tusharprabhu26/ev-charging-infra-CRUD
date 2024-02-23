@@ -1,0 +1,28 @@
+{
+  "name": "",
+  "version": "1.0.0",
+  "description": "---fill-this---",
+  "main": "index.js",
+  "scripts": {
+    "test": "env AZURE_NODE_ENV=development env NODE_ENV=development npx mocha --exit"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "nyc": {
+    "all": true,
+    "exclude": [
+      "coverage/**"
+    ]
+  },
+  "devDependencies": {
+    "@stryker-mutator/core": "^6.4.2",
+    "@stryker-mutator/mocha-runner": "^6.4.2",
+    "chai": "^4.3.7",
+    "eslint": "^8.37.0",
+    "eslint-config-google": "^0.14.0",
+    "jscpd": "^3.5.4",
+    "mocha": "^10.2.0",
+    "nyc": "^15.1.0"
+  }
+}
