@@ -20,7 +20,7 @@ function validateConnectorData(data) {
 
   for (const field of requiredFields) {
     if (!Object.prototype.hasOwnProperty.call(data, field)) {
-      throw new Error(`Invalid data: ${field} is missing`);
+      throw new Error(`Invalid data`);
     }
   }
 }
