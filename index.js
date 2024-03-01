@@ -39,30 +39,32 @@ app.post('/connectors', async (req, res, next) => {
   }
 });
 
-// Fetch all connectors
-app.get('/connectors', async (req, res, next) => {
+// Function to handle response and error
+async function handleResponseAndError(promise, res, next, errorMessage) {
   try {
-    const connectors = await Connector.find();
-    if (connectors.length === 0) {
-      throw new Error('No connectors found');
+    const data = await promise;
+    if (data.length === 0) {
+      throw new Error(errorMessage);
     }
-    res.json(connectors);
+    res.json(data);
   } catch (err) {
     next(err);
   }
+}
+
+// Fetch all connectors
+app.get('/connectors', (req, res, next) => {
+  handleResponseAndError(Connector.find(), res, next, 'No connectors found');
 });
 
 // Fetch all charge-points
-app.get('/charge-points', async (req, res, next) => {
-  try {
-    const chargePoints = await ChargePoint.find();
-    if (chargePoints.length === 0) {
-      throw new Error('No charge points found');
-    }
-    res.json(chargePoints);
-  } catch (err) {
-    next(err);
-  }
+app.get('/charge-points', (req, res, next) => {
+  handleResponseAndError(
+      ChargePoint.find(),
+      res,
+      next,
+      'No charge points found',
+  );
 });
 
 // Create new charge-points
@@ -89,18 +91,9 @@ async function createChargePoints(body) {
   return await ChargePoint.insertMany(body);
 }
 
-
 // Fetch all locations
-app.get('/locations', async (req, res, next) => {
-  try {
-    const locations = await Location.find();
-    if (locations.length === 0) {
-      throw new Error('No locations found');
-    }
-    res.json(locations);
-  } catch (err) {
-    next(err);
-  }
+app.get('/locations', (req, res, next) => {
+  handleResponseAndError(Location.find(), res, next, 'No locations found');
 });
 
 // Create new locations
@@ -119,36 +112,33 @@ async function createLocations(body) {
 }
 
 // Fetch all nearby available connectors of a particular type
-app.get('/connectors/:type/nearby', async (req, res, next) => {
-  try {
-    const {type} = req.params;
-    let {latitude, longitude, maxDistance = 5000} = req.query; // maxDistance in meters
+app.get('/connectors/:type/nearby', (req, res, next) => {
+  const {type} = req.params;
+  let {latitude, longitude, maxDistance = 5000} = req.query; // maxDistance is in meters
 
-    // Convert latitude, longitude, and maxDistance to Number
-    latitude = Number(latitude);
-    longitude = Number(longitude);
-    maxDistance = Number(maxDistance);
+  // Convert latitude, longitude, and maxDistance to Number
+  latitude = Number(latitude);
+  longitude = Number(longitude);
+  maxDistance = Number(maxDistance);
 
-    const connectors = await Connector.find({
-      'type': type,
-      'availability': true,
-      'chargePoint.location': {
-        $near: {
-          $geometry: {
-            type: 'Point',
-            coordinates: [longitude, latitude],
+  handleResponseAndError(
+      Connector.find({
+        'type': type,
+        'availability': true,
+        'chargePoint.location': {
+          $near: {
+            $geometry: {
+              type: 'Point',
+              coordinates: [longitude, latitude],
+            },
+            $maxDistance: maxDistance,
           },
-          $maxDistance: maxDistance,
         },
-      },
-    });
-    if (connectors.length === 0) {
-      throw new Error('No nearby connectors found');
-    }
-    res.json(connectors);
-  } catch (err) {
-    next(err);
-  }
+      }),
+      res,
+      next,
+      'No nearby connectors found',
+  );
 });
 
 // Error handling middleware
