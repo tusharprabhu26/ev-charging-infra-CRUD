@@ -1,5 +1,6 @@
 const request = require('supertest');
 const {expect} = require('chai');
+const nock = require('nock');
 const app = require('../index');
 const {Connector, ChargePoint, Location} = require('../evChargingSchema');
 
@@ -17,6 +18,16 @@ function createNewConnector() {
       },
     },
   };
+}
+
+async function createNewConnectorWithId() {
+  const connectorData = createNewConnector();
+  const connector = new Connector({
+    _id: '507f1f77bcf86cd799439011',
+    ...connectorData,
+  });
+  const savedConnector = await connector.save();
+  return savedConnector;
 }
 
 function createNewChargePoint() {
@@ -249,6 +260,44 @@ describe('Test the connectors/:type/nearby path', function() {
     );
     expect(nearbyConnectorsErrorResponse.body.error).to.equal(
         'Error: No nearby connectors found',
+    );
+  });
+});
+
+describe('Test the connectors/:id path', function() {
+  this.timeout(5000); // Set the timeout to 5000ms
+
+  it('It should response the GET method', async () => {
+    const savedConnector = await createNewConnectorWithId();
+    const batteryCapacity = 100;
+    const soc = 50;
+
+    nock('http://localhost:3001')
+        .post('/estimate-charging-time', {
+          connectorPower: savedConnector.wattage,
+          batteryCapacity: batteryCapacity,
+          soc: soc,
+        })
+        .reply(200, {chargingTime: 2});
+
+    const getConnectorResponse = await request(app).get(
+        `/connectors/507f1f77bcf86cd799439011?batteryCapacity=${batteryCapacity}&soc=${soc}`,
+    );
+    expect(getConnectorResponse.statusCode).to.equal(200);
+    expect(getConnectorResponse.body.estimatedChargingTime).to.equal(2);
+  });
+
+  it('It should handle errors in GET method for /connectors/:id', async () => {
+    const id = '60d3b37f224b9a1848f142e7';
+    const batteryCapacity = 100;
+    const soc = 50;
+
+    const getConnectorErrorResponse = await request(app).get(
+        `/connectors/${id}?batteryCapacity=${batteryCapacity}&soc=${soc}`,
+    );
+    expect(getConnectorErrorResponse.statusCode).to.equal(400);
+    expect(getConnectorErrorResponse.body.error).to.equal(
+        'Error: Connector not found',
     );
   });
 });
