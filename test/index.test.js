@@ -46,12 +46,31 @@ function createInvalidData(validData, fieldToRemove) {
 }
 
 async function getRequestAndCheckStatus(endpoint, expectedStatusCode) {
-  const response = await request(app).get(`/${endpoint}`);
-  expect(response.statusCode).to.equal(expectedStatusCode);
-  return response;
+  const getStatusResponse = await request(app).get(`/${endpoint}`);
+  expect(getStatusResponse.statusCode).to.equal(expectedStatusCode);
+  return getStatusResponse;
 }
 
-let response;
+async function postRequestAndCheckStatus(
+    endpoint,
+    data,
+    expectedStatusCode,
+    expectedError,
+) {
+  const postStatusResponse = await request(app).post(`/${endpoint}`).send(data);
+  expect(postStatusResponse.statusCode).to.equal(expectedStatusCode);
+  if (expectedError) {
+    expect(postStatusResponse.body.error).to.equal(expectedError);
+  }
+  return postStatusResponse;
+}
+
+async function checkResponse(response, expectedStatusCode, isArray) {
+  expect(response.statusCode).to.equal(expectedStatusCode);
+  if (isArray) {
+    expect(response.body).to.be.an('array').that.is.not.empty;
+  }
+}
 
 function testEndpoint(endpoint, type, createValidData, fieldToRemove) {
   const validData = createValidData();
@@ -60,8 +79,11 @@ function testEndpoint(endpoint, type, createValidData, fieldToRemove) {
   describe(`Test the ${endpoint} path`, function() {
     this.timeout(5000); // Set the timeout to 5000ms
     it(`It should response the POST method for ${endpoint}`, async () => {
-      response = await request(app).post(`/${endpoint}`).send(validData);
-      expect(response.statusCode).to.equal(200);
+      await postRequestAndCheckStatus(
+          endpoint,
+          validData,
+          200,
+      );
     });
 
     it(`It should validate each ${type} in the array in POST method for ${endpoint}`, async () => {
@@ -69,14 +91,20 @@ function testEndpoint(endpoint, type, createValidData, fieldToRemove) {
         {...validData, name: `${type}2`},
         {...validData, name: `${type}3`},
       ];
-      response = await request(app).post(`/${endpoint}`).send(items);
-      expect(response.statusCode).to.equal(200);
+      await postRequestAndCheckStatus(
+          endpoint,
+          items,
+          200,
+      );
     });
 
     it(`It should return error if fields are missing in POST method for ${endpoint}`, async () => {
-      response = await request(app).post(`/${endpoint}`).send(invalidData);
-      expect(response.statusCode).to.equal(400);
-      expect(response.body.error).to.equal(`Error: Invalid ${endpoint} data`);
+      await postRequestAndCheckStatus(
+          endpoint,
+          invalidData,
+          400,
+          `Error: Invalid ${endpoint} data`,
+      );
     });
 
     it(`It should return error if any connector in array is invalid in POST method for ${endpoint}`,
@@ -85,32 +113,41 @@ function testEndpoint(endpoint, type, createValidData, fieldToRemove) {
           const invalidConnector = createInvalidData(validConnector, 'type');
           const connectors = [validConnector, invalidConnector];
 
-          response = await request(app).post(`/${endpoint}`).send(connectors);
-          expect(response.statusCode).to.equal(400);
-          expect(response.body.error).to.equal(`Error: Invalid ${endpoint} data`);
+          await postRequestAndCheckStatus(
+              endpoint,
+              connectors,
+              400,
+              `Error: Invalid ${endpoint} data`,
+          );
         });
 
     it(`It should response the GET method for ${endpoint}`, async () => {
-      response = await getRequestAndCheckStatus(endpoint, 200);
+      const getResponse = await getRequestAndCheckStatus(endpoint, 200);
+      await checkResponse(getResponse, 200, true);
     });
 
     it(`It should handle errors in GET method for ${endpoint}`, async () => {
       await type.deleteMany({});
-      response = await getRequestAndCheckStatus(endpoint, 400);
-      expect(response.body.error).to.equal(
-          `Error: No ${endpoint.replace('-', ' ')} found`,
+      const getErrorResponse = await getRequestAndCheckStatus(endpoint, 400);
+      expect(getErrorResponse.body.error).to.equal(
+          `Error: No ${endpoint} found`,
       );
     });
   });
 }
-testEndpoint('connectors', Connector, createNewConnector, 'type');
-testEndpoint('charge-points', ChargePoint, createNewChargePoint, 'name');
-testEndpoint('locations', Location, createNewLocation, 'name');
 
-async function getNearbyConnectors(type, latitude, longitude) {
-  return await request(app).get(
+async function getAndCheckNearbyConnectors(
+    type,
+    latitude,
+    longitude,
+    expectedStatusCode,
+    isArray,
+) {
+  const nearbyConnectorsResponse = await request(app).get(
       `/connectors/${type}/nearby?latitude=${latitude}&longitude=${longitude}`,
   );
+  await checkResponse(nearbyConnectorsResponse, expectedStatusCode, isArray);
+  return nearbyConnectorsResponse;
 }
 
 async function performActionAndGetNearbyConnectors(
@@ -120,7 +157,13 @@ async function performActionAndGetNearbyConnectors(
     longitude,
 ) {
   await action;
-  return await getNearbyConnectors(type, latitude, longitude);
+  return await getAndCheckNearbyConnectors(
+      type,
+      latitude,
+      longitude,
+      200,
+      true,
+  );
 }
 
 describe('Test the connectors/:type/nearby path', function() {
@@ -158,14 +201,13 @@ describe('Test the connectors/:type/nearby path', function() {
       },
     });
 
-    response = await performActionAndGetNearbyConnectors(
+    const nearbyConnectorsResponse = await performActionAndGetNearbyConnectors(
         nearbyConnector.save(),
         type,
         latitude,
         longitude,
     );
-    expect(response.statusCode).to.equal(200);
-    expect(response.body).to.be.an('array').that.is.not.empty;
+    await checkResponse(nearbyConnectorsResponse, 200, true);
   });
 
   it('It should return connectors of specified type that are available and near specified location',
@@ -177,10 +219,14 @@ describe('Test the connectors/:type/nearby path', function() {
         const nearbyConnector = new Connector(createNewConnector());
         await nearbyConnector.save();
 
-        response = await getNearbyConnectors(type, latitude, longitude);
-        expect(response.statusCode).to.equal(200);
-        expect(response.body).to.be.an('array').that.is.not.empty;
-        response.body.forEach((connector) => {
+        const nearbyConnectorsResponse = await getAndCheckNearbyConnectors(
+            type,
+            latitude,
+            longitude,
+            200,
+            true,
+        );
+        nearbyConnectorsResponse.body.forEach((connector) => {
           expect(connector.type).to.equal(type);
           expect(connector.availability).to.equal(true);
         });
@@ -192,13 +238,21 @@ describe('Test the connectors/:type/nearby path', function() {
     const longitude = 77.5946; // Longitude for Bengaluru
 
     // Delete all connectors of the specified type
-    response = await performActionAndGetNearbyConnectors(
-        Connector.deleteMany({type: type}),
+    await Connector.deleteMany({type: type});
+
+    const nearbyConnectorsErrorResponse = await getAndCheckNearbyConnectors(
         type,
         latitude,
         longitude,
+        400,
+        false,
     );
-    expect(response.statusCode).to.equal(400);
-    expect(response.body.error).to.equal('Error: No nearby connectors found');
+    expect(nearbyConnectorsErrorResponse.body.error).to.equal(
+        'Error: No nearby connectors found',
+    );
   });
 });
+
+testEndpoint('connectors', Connector, createNewConnector, 'type');
+testEndpoint('charge-points', ChargePoint, createNewChargePoint, 'name');
+testEndpoint('locations', Location, createNewLocation, 'name');

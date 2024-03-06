@@ -1,8 +1,7 @@
 const express = require('express');
 const connectDB = require('./databaseConnection');
 const connectorRoutes = require('./connectorRoutes');
-const chargePointRoutes = require('./chargePointRoutes');
-const locationRoutes = require('./locationRoutes');
+const locationAndChargePointRoutes = require('./locationAndChargePointRoutes');
 
 const app = express();
 app.use(express.json());
@@ -11,8 +10,7 @@ app.use(express.json());
 connectDB();
 
 app.use(connectorRoutes);
-app.use(chargePointRoutes);
-app.use(locationRoutes);
+app.use(locationAndChargePointRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
