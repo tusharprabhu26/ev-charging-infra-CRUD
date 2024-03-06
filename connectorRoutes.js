@@ -1,4 +1,5 @@
 const express = require('express');
+const axios = require('axios');
 const router = express.Router();
 const {Connector} = require('./evChargingSchema');
 const {handleResponseAndError} = require('./handleResponseError');
@@ -66,8 +67,49 @@ async function getNearbyConnectors(req, res, next) {
   );
 }
 
+async function getEstimatedChargingTime(connector, batteryCapacity, soc) {
+  const response = await axios.post(
+      `http://localhost:3001/estimate-charging-time`,
+      {
+        connectorPower: connector.wattage,
+        batteryCapacity: Number(batteryCapacity),
+        soc: Number(soc),
+      },
+  );
+  return response.data.chargingTime;
+}
+
+async function getConnectorById(id) {
+  const connector = await Connector.findById(id);
+  if (!connector) {
+    throw new Error('Connector not found');
+  }
+  return connector;
+}
+
+async function getConnectorDetails(req, res, next) {
+  const {id} = req.params;
+  const {batteryCapacity, soc} = req.query;
+  try {
+    let connector = await getConnectorById(id);
+    const estimatedTime = await getEstimatedChargingTime(
+        connector,
+        batteryCapacity,
+        soc,
+    );
+
+    connector = connector.toObject();
+    connector.estimatedChargingTime = estimatedTime;
+
+    res.json(connector);
+  } catch (error) {
+    next(error);
+  }
+}
+
 router.post('/connectors', createConnectors);
 router.get('/connectors', getConnectors);
 router.get('/connectors/:type/nearby', getNearbyConnectors);
+router.get('/connectors/:id', getConnectorDetails);
 
 module.exports = router;
