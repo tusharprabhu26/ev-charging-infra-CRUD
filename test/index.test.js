@@ -50,6 +50,7 @@ async function getRequestAndCheckStatus(endpoint, expectedStatusCode) {
   expect(response.statusCode).to.equal(expectedStatusCode);
   return response;
 }
+
 let response;
 
 function testEndpoint(endpoint, type, createValidData, fieldToRemove) {
@@ -74,9 +75,20 @@ function testEndpoint(endpoint, type, createValidData, fieldToRemove) {
 
     it(`It should return error if fields are missing in POST method for ${endpoint}`, async () => {
       response = await request(app).post(`/${endpoint}`).send(invalidData);
-      expect(response.statusCode).to.equal(500);
-      expect(response.body.error).to.equal(`Error: Invalid data`);
+      expect(response.statusCode).to.equal(400);
+      expect(response.body.error).to.equal(`Error: Invalid ${endpoint} data`);
     });
+
+    it(`It should return error if any connector in array is invalid in POST method for ${endpoint}`,
+        async () => {
+          const validConnector = createNewConnector();
+          const invalidConnector = createInvalidData(validConnector, 'type');
+          const connectors = [validConnector, invalidConnector];
+
+          response = await request(app).post(`/${endpoint}`).send(connectors);
+          expect(response.statusCode).to.equal(400);
+          expect(response.body.error).to.equal(`Error: Invalid ${endpoint} data`);
+        });
 
     it(`It should response the GET method for ${endpoint}`, async () => {
       response = await getRequestAndCheckStatus(endpoint, 200);
@@ -84,7 +96,7 @@ function testEndpoint(endpoint, type, createValidData, fieldToRemove) {
 
     it(`It should handle errors in GET method for ${endpoint}`, async () => {
       await type.deleteMany({});
-      response = await getRequestAndCheckStatus(endpoint, 500);
+      response = await getRequestAndCheckStatus(endpoint, 400);
       expect(response.body.error).to.equal(
           `Error: No ${endpoint.replace('-', ' ')} found`,
       );
@@ -156,6 +168,24 @@ describe('Test the connectors/:type/nearby path', function() {
     expect(response.body).to.be.an('array').that.is.not.empty;
   });
 
+  it('It should return connectors of specified type that are available and near specified location',
+      async () => {
+        const type = 'Type1';
+        const latitude = 12.9716; // Latitude for Bengaluru
+        const longitude = 77.5946; // Longitude for Bengaluru
+
+        const nearbyConnector = new Connector(createNewConnector());
+        await nearbyConnector.save();
+
+        response = await getNearbyConnectors(type, latitude, longitude);
+        expect(response.statusCode).to.equal(200);
+        expect(response.body).to.be.an('array').that.is.not.empty;
+        response.body.forEach((connector) => {
+          expect(connector.type).to.equal(type);
+          expect(connector.availability).to.equal(true);
+        });
+      });
+
   it('It should handle errors in GET method for /connectors/:type/nearby', async () => {
     const type = 'Type1';
     const latitude = 12.9716; // Latitude for Bengaluru
@@ -168,7 +198,7 @@ describe('Test the connectors/:type/nearby path', function() {
         latitude,
         longitude,
     );
-    expect(response.statusCode).to.equal(500);
+    expect(response.statusCode).to.equal(400);
     expect(response.body.error).to.equal('Error: No nearby connectors found');
   });
 });

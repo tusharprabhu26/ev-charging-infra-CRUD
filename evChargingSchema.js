@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 const {Schema} = mongoose;
 
-// Connector Schema
 const LocationSubSchema = new Schema({
   name: String,
   location: {
