@@ -13,7 +13,7 @@ LocationSubSchema.index({location: '2dsphere'});
 
 const ConnectorSchema = new Schema({
   type: String,
-  wattage: Number,
+  connectorPowerKW: Number,
   manufacturer: String,
   availability: Boolean,
   chargePoint: LocationSubSchema,

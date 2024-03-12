@@ -7,7 +7,7 @@ const {handleResponseAndError} = require('./handleResponseError');
 function validateConnectorData(data) {
   const requiredFields = [
     'type',
-    'wattage',
+    'connectorPowerKW',
     'manufacturer',
     'availability',
     'chargePoint',
@@ -67,16 +67,20 @@ async function getNearbyConnectors(req, res, next) {
   );
 }
 
-async function getEstimatedChargingTime(connector, batteryCapacity, soc) {
+async function getEstimatedChargingTimeHours(
+    connector,
+    batteryCapacityKWh,
+    socPercentage,
+) {
   const response = await axios.post(
       `http://localhost:3001/estimate-charging-time`,
       {
-        connectorPower: connector.wattage,
-        batteryCapacity: Number(batteryCapacity),
-        soc: Number(soc),
+        connectorPower: connector.connectorPowerKW,
+        batteryCapacityKWh: Number(batteryCapacityKWh),
+        socPercentage: Number(socPercentage),
       },
   );
-  return response.data.chargingTime;
+  return response.data.chargingTimeHours;
 }
 
 async function getConnectorById(id) {
@@ -89,17 +93,17 @@ async function getConnectorById(id) {
 
 async function getConnectorDetails(req, res, next) {
   const {id} = req.params;
-  const {batteryCapacity, soc} = req.query;
+  const {batteryCapacityKWh, socPercentage} = req.query;
   try {
     let connector = await getConnectorById(id);
-    const estimatedTime = await getEstimatedChargingTime(
+    const estimatedTime = await getEstimatedChargingTimeHours(
         connector,
-        batteryCapacity,
-        soc,
+        batteryCapacityKWh,
+        socPercentage,
     );
 
     connector = connector.toObject();
-    connector.estimatedChargingTime = estimatedTime;
+    connector.estimatedChargingTimeHours = estimatedTime;
 
     res.json(connector);
   } catch (error) {

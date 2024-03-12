@@ -7,7 +7,7 @@ const {Connector, ChargePoint, Location} = require('../evChargingSchema');
 function createNewConnector() {
   return {
     type: 'Type1',
-    wattage: 100,
+    connectorPowerKW: 100,
     manufacturer: 'ABB',
     availability: true,
     chargePoint: {
@@ -90,11 +90,7 @@ function testEndpoint(endpoint, type, createValidData, fieldToRemove) {
   describe(`Test the ${endpoint} path`, function() {
     this.timeout(5000); // Set the timeout to 5000ms
     it(`It should response the POST method for ${endpoint}`, async () => {
-      await postRequestAndCheckStatus(
-          endpoint,
-          validData,
-          200,
-      );
+      await postRequestAndCheckStatus(endpoint, validData, 200);
     });
 
     it(`It should validate each ${type} in the array in POST method for ${endpoint}`, async () => {
@@ -102,11 +98,7 @@ function testEndpoint(endpoint, type, createValidData, fieldToRemove) {
         {...validData, name: `${type}2`},
         {...validData, name: `${type}3`},
       ];
-      await postRequestAndCheckStatus(
-          endpoint,
-          items,
-          200,
-      );
+      await postRequestAndCheckStatus(endpoint, items, 200);
     });
 
     it(`It should return error if fields are missing in POST method for ${endpoint}`, async () => {
@@ -203,7 +195,7 @@ describe('Test the connectors/:type/nearby path', function() {
 
     const nearbyConnector = new Connector({
       type: type,
-      wattage: 100,
+      connectorPowerKW: 100,
       manufacturer: 'ABB',
       availability: true,
       chargePoint: {
@@ -269,31 +261,32 @@ describe('Test the connectors/:id path', function() {
 
   it('It should response the GET method', async () => {
     const savedConnector = await createNewConnectorWithId();
-    const batteryCapacity = 100;
-    const soc = 50;
+    const batteryCapacityKWh = 100;
+    const socPercentage = 50;
 
     nock('http://localhost:3001')
         .post('/estimate-charging-time', {
-          connectorPower: savedConnector.wattage,
-          batteryCapacity: batteryCapacity,
-          soc: soc,
+          connectorPower: savedConnector.connectorPowerKW,
+          batteryCapacityKWh: batteryCapacityKWh,
+          socPercentage: socPercentage,
         })
-        .reply(200, {chargingTime: 2});
+        .reply(200, {chargingTimeHours: 2});
 
     const getConnectorResponse = await request(app).get(
-        `/connectors/507f1f77bcf86cd799439011?batteryCapacity=${batteryCapacity}&soc=${soc}`,
+        `/connectors/507f1f77bcf86cd799439011?batteryCapacityKWh=${batteryCapacityKWh}
+        &socPercentage=${socPercentage}`,
     );
     expect(getConnectorResponse.statusCode).to.equal(200);
-    expect(getConnectorResponse.body.estimatedChargingTime).to.equal(2);
+    expect(getConnectorResponse.body.estimatedChargingTimeHours).to.equal(2);
   });
 
   it('It should handle errors in GET method for /connectors/:id', async () => {
     const id = '60d3b37f224b9a1848f142e7';
-    const batteryCapacity = 100;
-    const soc = 50;
+    const batteryCapacityKWh = 100;
+    const socPercentage = 50;
 
     const getConnectorErrorResponse = await request(app).get(
-        `/connectors/${id}?batteryCapacity=${batteryCapacity}&soc=${soc}`,
+        `/connectors/${id}?batteryCapacityKWh=${batteryCapacityKWh}&socPercentage=${socPercentage}`,
     );
     expect(getConnectorErrorResponse.statusCode).to.equal(400);
     expect(getConnectorErrorResponse.body.error).to.equal(
