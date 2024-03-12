@@ -3,6 +3,30 @@ const {expect} = require('chai');
 const nock = require('nock');
 const app = require('../index');
 const {Connector, ChargePoint, Location} = require('../evChargingSchema');
+const mongoose = require('mongoose');
+const {MongoMemoryServer} = require('mongodb-memory-server');
+
+// Connect to MongoDB
+async function connectDB() {
+  const mongoServer = await MongoMemoryServer.create();
+  const uri = mongoServer.getUri();
+  process.env.MONGO_URL = uri;
+  await mongoose.disconnect();
+  await mongoose.connect(uri);
+}
+
+
+describe('Test MongoDB connection', () => {
+  before('Connecting to Database', async () => {
+    await connectDB();
+  });
+
+  it('should connect to MongoDB', async () => {
+    const db = mongoose.connection;
+    expect(db.readyState).to.equal(1); // 1 = connected
+  });
+});
+
 
 function createNewConnector() {
   return {

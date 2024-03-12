@@ -1,13 +1,10 @@
 const express = require('express');
-const connectDB = require('./databaseConnection');
 const connectorRoutes = require('./connectorRoutes');
 const locationAndChargePointRoutes = require('./locationAndChargePointRoutes');
+const mongoose = require('mongoose');
 
 const app = express();
 app.use(express.json());
-
-// Connect to MongoDB
-connectDB();
 
 app.use(connectorRoutes);
 app.use(locationAndChargePointRoutes);
@@ -18,7 +15,12 @@ app.use((err, req, res, next) => {
   res.status(400).send({error: err.toString()});
 });
 
-const port = 3000;
-app.listen(port, () => console.log(`Server is running on port ${port}`));
+const port = process.env.PORT;
+
+mongoose
+    .connect(process.env.MONGO_URL)
+    .then(() => {
+      app.listen(port, () => console.log(`Server is running on port ${port}`));
+    });
 
 module.exports = app;
