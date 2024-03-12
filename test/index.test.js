@@ -27,7 +27,6 @@ describe('Test MongoDB connection', () => {
   });
 });
 
-
 function createNewConnector() {
   return {
     type: 'Type1',
