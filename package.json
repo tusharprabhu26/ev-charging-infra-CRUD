@@ -4,8 +4,7 @@
   "description": "---fill-this---",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "test": "npm start & env AZURE_NODE_ENV=development env NODE_ENV=development npx mocha --exit"
+    "test": "env AZURE_NODE_ENV=development env NODE_ENV=development npx mocha --exit"
   },
   "keywords": [],
   "author": "",
