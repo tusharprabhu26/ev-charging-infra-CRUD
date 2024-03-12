@@ -2,10 +2,6 @@ name: Check my code
 
 on: [push,pull_request]
 
-env:
-  PORT: 3000
-  MONGO_URL: mongodb://localhost:27017/charging_stations
-
 jobs:
   call-checkmycode:
     uses: ncmsdev/numo-builder/.github/workflows/checkmycode.yml@main
