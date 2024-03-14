@@ -287,7 +287,7 @@ describe('Test the connectors/:id path', function() {
     const batteryCapacityKWh = 100;
     const socPercentage = 50;
 
-    nock('http://localhost:3001')
+    nock('http://localhost:8080')
         .post('/estimate-charging-time', {
           connectorPowerKW: savedConnector.connectorPowerKW,
           batteryCapacityKWh: batteryCapacityKWh,
