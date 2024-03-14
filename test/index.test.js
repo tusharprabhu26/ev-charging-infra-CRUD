@@ -289,7 +289,7 @@ describe('Test the connectors/:id path', function() {
 
     nock('http://localhost:3001')
         .post('/estimate-charging-time', {
-          connectorPower: savedConnector.connectorPowerKW,
+          connectorPowerKW: savedConnector.connectorPowerKW,
           batteryCapacityKWh: batteryCapacityKWh,
           socPercentage: socPercentage,
         })

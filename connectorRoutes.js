@@ -75,7 +75,7 @@ async function getEstimatedChargingTimeHours(
   const response = await axios.post(
       `http://localhost:3001/estimate-charging-time`,
       {
-        connectorPower: connector.connectorPowerKW,
+        connectorPowerKW: connector.connectorPowerKW,
         batteryCapacityKWh: Number(batteryCapacityKWh),
         socPercentage: Number(socPercentage),
       },
